@@ -43,8 +43,8 @@ GO
 
 CREATE TABLE Client (
     IdClient UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
-    FirstName VARCHAR(50) NOT NULL,
-    LastName VARCHAR(50) NOT NULL,
+    FirstName VARCHAR(80) NOT NULL,
+    LastName VARCHAR(80) NOT NULL,
     Phone VARCHAR(20) NOT NULL
 );
 GO
@@ -54,10 +54,10 @@ CREATE TABLE [Address] (
     IdClient UNIQUEIDENTIFIER NOT NULL,
     Street VARCHAR(100) NOT NULL,
     [Number] INT NOT NULL,
-    PostalCode SMALLINT NOT NULL,
+    PostalCode VARCHAR(20) NOT NULL,
     Colony VARCHAR(50) NOT NULL,
     [Status] BIT NOT NULL,
-    Reference VARCHAR(100)
+    Reference VARCHAR(200)
 );
 GO
 
@@ -66,6 +66,7 @@ CREATE TABLE Product (
     [Name] VARCHAR(50) NOT NULL,
     [IdType] INT NOT NULL,
     Price DECIMAL(12, 2) NOT NULL,
+    Size VARCHAR(20) NOT NULL,
     [Status] BIT NOT NULL
 );
 GO
@@ -79,7 +80,7 @@ GO
 CREATE TABLE DeliveryOrder (
     IdDeliveryOrder UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
     IdClient UNIQUEIDENTIFIER NOT NULL,
-    [Status] BIT NOT NULL,
+    IdOrderStatus INT NOT NULL,
     [Date] DATETIME NOT NULL,
     Total DECIMAL(12, 2) NOT NULL,
     DeliveryDriver UNIQUEIDENTIFIER NOT NULL,
@@ -91,7 +92,8 @@ CREATE TABLE DeliveryOrderProduct (
     IdDeliveryOrderProduct UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
     IdDeliveryOrder UNIQUEIDENTIFIER NOT NULL,
     IdProduct UNIQUEIDENTIFIER NOT NULL,
-    Quantity INT NOT NULL
+    Quantity INT NOT NULL,
+    SubTotal DECIMAL(12, 2) NOT NULL
 );
 GO
 
@@ -119,7 +121,7 @@ GO
 CREATE TABLE LocalOrder (
     IdLocalOrder UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
     Waiter UNIQUEIDENTIFIER NOT NULL,
-    [Status] BIT NOT NULL,
+    IdOrderStatus INT NOT NULL,
     [Table] INT NOT NULL,
     [Date] DATETIME NOT NULL,
     Total DECIMAL(12, 2) NOT NULL
@@ -130,7 +132,8 @@ CREATE TABLE LocalOrderProduct (
     IdLocalOrderProduct UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
     IdLocalOrder UNIQUEIDENTIFIER NOT NULL,
     IdProduct UNIQUEIDENTIFIER NOT NULL,
-    Quantity INT NOT NULL
+    Quantity INT NOT NULL,
+    SubTotal DECIMAL(12, 2) NOT NULL
 );
 GO
 
@@ -139,15 +142,21 @@ CREATE TABLE OrderedSupply (
     IdSupply UNIQUEIDENTIFIER NOT NULL,
     IdSupplierOrder UNIQUEIDENTIFIER NOT NULL,
     Quantity INT NOT NULL,
-    MeasurementUnit VARCHAR(20) NOT NULL
+    IdMeasurementUnit INT NOT NULL
 );
 GO
 
 CREATE TABLE Recipe (
     IdRecipe UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
     IdProduct UNIQUEIDENTIFIER NOT NULL,
-    Instructions VARCHAR(100) NOT NULL
+    Instructions VARCHAR(800) NOT NULL
 );
+GO
+
+CREATE TABLE MeasurementUnit (
+	IdMeasurementUnit INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+	MeasurementUnit VARCHAR(20) NOT NULL
+	);
 GO
 
 CREATE TABLE RecipeSupply (
@@ -155,14 +164,13 @@ CREATE TABLE RecipeSupply (
     IdRecipe UNIQUEIDENTIFIER NOT NULL,
     IdSupply UNIQUEIDENTIFIER NOT NULL,
     SupplyAmount DECIMAL(12, 3) NOT NULL,
-    MeasurementUnit VARCHAR(100) NOT NULL
+    IdMeasurementUnit INT NOT NULL
 );
 GO
 
 CREATE TABLE Supplier (
     IdSupplier UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
     [Name] VARCHAR(50) NOT NULL,
-    IdSupplyCategory INT NOT NULL,
     Phone VARCHAR(20) NOT NULL
 );
 GO
@@ -170,10 +178,17 @@ GO
 CREATE TABLE SupplierOrder (
     IdSupplierOrder UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
     IdSupplier UNIQUEIDENTIFIER NOT NULL,
+	IdSupply UNIQUEIDENTIFIER NOT NULL,
     OrderDate DATE NOT NULL,
     ExpectedDate DATE NOT NULL,
     ArrivalDate DATE NOT NULL,
-    [Status] BIT NOT NULL
+    IdOrderStatus INT NOT NULL
+);
+GO
+
+CREATE TABLE OrderStatus (
+    IdOrderStatus INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+    [Status] VARCHAR(20) NOT NULL
 );
 GO
 
@@ -182,7 +197,8 @@ CREATE TABLE Supply (
     [Name] VARCHAR(50) NOT NULL,
     Quantity DECIMAL(12, 3) NOT NULL,
     IdSupplyCategory INT NOT NULL,
-    MeasurementUnit VARCHAR(20) NOT NULL,
+    IdMeasurementUnit INT NOT NULL,
+    ExpirationDate DATE NOT NULL,
     [Status] BIT NOT NULL
 );
 GO
@@ -191,16 +207,25 @@ CREATE TABLE SupplyCategory (
     IdSupplyCategory INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
     [SupplyCategory] VARCHAR(50) NOT NULL
 );
+GO
+
+CREATE TABLE SupplierSupplyCategory (
+    IdSupplierSupplyCategory INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+    IdSupplier UNIQUEIDENTIFIER NOT NULL,
+    IdSupplyCategory INT NOT NULL
+);
+GO
 
 CREATE TABLE SupplyInventoryReport (
     IdSupplyInventoryReport UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
-    IdInvenroryReport UNIQUEIDENTIFIER NOT NULL,
+    IdInventoryReport UNIQUEIDENTIFIER NOT NULL,
     IdSupply UNIQUEIDENTIFIER NOT NULL,
-    MeasurementUnit VARCHAR NOT NULL,
+    IdMeasurementUnit INT NOT NULL,
     ExpectedAmount DECIMAL(12, 2)NOT NULL,
     ReportedAmount DECIMAL(12, 2) NOT NULL,
     DifferingAmountReason VARCHAR (100) NOT NULL
 );
+GO
 
 CREATE TABLE [Transaction] (
     IdTransaction UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
@@ -293,12 +318,8 @@ ALTER TABLE Supply
     ADD CONSTRAINT Supply_IdSupplyCategory_fk FOREIGN KEY (IdSupplyCategory) REFERENCES SupplyCategory (IdSupplyCategory);
 GO
 
-ALTER TABLE Supplier
-    ADD CONSTRAINT Supplier_IdSupplyCategory_fk FOREIGN KEY (IdSupplyCategory) REFERENCES SupplyCategory (IdSupplyCategory);
-GO
-
 ALTER TABLE SupplyInventoryReport
-    ADD CONSTRAINT SupplyInventoryReport_IdInvenroryReport_fk FOREIGN KEY (IdInvenroryReport) REFERENCES InventoryReport (IdInventoryReport);
+    ADD CONSTRAINT SupplyInventoryReport_IdInventoryReport_fk FOREIGN KEY (IdInventoryReport) REFERENCES InventoryReport (IdInventoryReport);
 GO
 
 ALTER TABLE SupplyInventoryReport
@@ -307,4 +328,89 @@ GO
 
 ALTER TABLE [Transaction]
     ADD CONSTRAINT Transaction_RegisteredBy_fk FOREIGN KEY (RegisteredBy) REFERENCES Employee (IdEmployee);
+GO
+
+ALTER TABLE OrderedSupply
+	ADD CONSTRAINT OrderedSupply_IdMeasurementUnit_fk FOREIGN KEY (IdMeasurementUnit) REFERENCES MeasurementUnit (IdMeasurementUnit);
+GO
+
+ALTER TABLE RecipeSupply
+	ADD CONSTRAINT RecipeSupply_IdMeasurementUnit_fk FOREIGN KEY (IdMeasurementUnit) REFERENCES MeasurementUnit (IdMeasurementUnit);
+GO
+
+ALTER TABLE Supply
+	ADD CONSTRAINT Supply_IdMeasurementUnit_fk FOREIGN KEY (IdMeasurementUnit) REFERENCES MeasurementUnit (IdMeasurementUnit);
+GO
+
+ALTER TABLE SupplyInventoryReport
+	ADD CONSTRAINT SupplyInventoryReport_IdMeasurementUnit_fk FOREIGN KEY (IdMeasurementUnit) REFERENCES MeasurementUnit (IdMeasurementUnit);
+GO
+
+ALTER TABLE DeliveryOrder
+	ADD CONSTRAINT DeliveryOrder_IdOrderStatus_fk FOREIGN KEY (IdOrderStatus) REFERENCES OrderStatus (IdOrderStatus);
+GO
+
+ALTER TABLE LocalOrder
+	ADD CONSTRAINT LocalOrder_IdOrderStatus_fk FOREIGN KEY (IdOrderStatus) REFERENCES OrderStatus (IdOrderStatus);
+GO
+
+ALTER TABLE SupplierOrder
+	ADD CONSTRAINT SupplierOrder_IdOrderStatus_fk FOREIGN KEY (IdOrderStatus) REFERENCES OrderStatus (IdOrderStatus);
+GO
+
+ALTER TABLE SupplierSupplyCategory
+    ADD CONSTRAINT SupplierSupplyCategory_IdSupplier_fk FOREIGN KEY (IdSupplier) REFERENCES Supplier (IdSupplier); 
+GO
+
+ALTER TABLE SupplierSupplyCategory
+    ADD CONSTRAINT SupplierSupplyCategory_IdSupplyCategory_fk FOREIGN KEY (IdSupplyCategory) REFERENCES SupplyCategory (IdSupplyCategory); 
+GO
+
+--Agregar datos de precarga
+INSERT INTO Charge ([Name])
+VALUES 
+    ('Mesero'),
+    ('Repartidor'),
+    ('Cocinero'),
+    ('Cajero'),
+    ('Gerente');
+GO
+
+INSERT INTO MeasurementUnit (MeasurementUnit)
+VALUES 
+    ('Kilogramos'),
+    ('Unidades'),
+    ('Litros');
+GO
+
+INSERT INTO SupplyCategory ([SupplyCategory])
+VALUES
+	('Harinas'),
+	('Salsas'),
+	('Quesos'),
+	('Carnes'),
+	('Vegetales'),
+	('Frutas'),
+	('Condimentos'),
+	('Aceites'),
+	('Bebidas')
+GO
+
+INSERT INTO OrderStatus([Status])
+VALUES
+    ('Realizado'),
+	('Entregado'),
+	('En camino'),
+	('Cancelado'),
+	('No entregado'),
+    ('Pendiente'),
+    ('En preparacion'),
+    ('Listo para entregar');
+GO
+
+INSERT INTO ProductType ([Type])
+VALUES
+    ('Pizza'),
+    ('Bebida'),
+    ('Postre');
 GO
